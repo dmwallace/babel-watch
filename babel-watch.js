@@ -198,23 +198,39 @@ function handleFileLoad(filename, callback) {
 
 function killApp() {
   if (childApp) {
-    childApp.on('exit', () => {
-      if (pipeFd) {
-        fs.closeSync(pipeFd); // silently close pipe fd
+    const currentPipeFd = pipeFd;
+    const currentPipeFilename = pipeFilename;
+    let exitTriggered = false
+    function handleExit() {
+      if (currentPipeFd) {
+        fs.close(currentPipeFd); // silently close pipe fd - ignore callback
       }
-      if (pipeFilename) {
-        fs.unlinkSync(pipeFilename); // silently remove old pipe file
+      if (currentPipeFilename) {
+        fs.unlink(currentPipeFilename); // silently remove old pipe file - ignore callback
       }
-      pipeFd = undefined;
-      childApp = undefined;
-      pipeFilename = undefined;
       restartAppInternal();
+    }
+    childApp.on('exit', () => {
+      exitTriggered = true
+      handleExit()
     });
     try {
       childApp.kill('SIGHUP');
     } catch (error) {
+      console.error(error)
       childApp.kill('SIGKILL');
     }
+// restart anyway if childApp doesn't trigger exit event after 400ms
+    setTimeout(() => {
+      if (!exitTriggered) {
+        // kill anyway
+        childApp.kill('SIGKILL');
+        handleExit()
+      }
+    }, 400)
+    pipeFd = undefined;
+    pipeFilename = undefined;
+    childApp = undefined;
   }
 }
 
