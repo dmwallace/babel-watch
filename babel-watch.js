@@ -202,11 +202,14 @@ function killApp() {
     const currentPipeFilename = pipeFilename;
     let exitTriggered = false
     function handleExit() {
-      if (currentPipeFd) {
-        fs.close(currentPipeFd); // silently close pipe fd - ignore callback
-      }
-      if (currentPipeFilename) {
-        fs.unlink(currentPipeFilename); // silently remove old pipe file - ignore callback
+      try {
+        if (currentPipeFd) {
+          fs.close(currentPipeFd); // silently close pipe fd - ignore callback
+        }
+        if (currentPipeFilename) {
+          fs.unlink(currentPipeFilename); // silently remove old pipe file - ignore callback
+        }
+      } catch(error) {
       }
       restartAppInternal();
     }
@@ -217,14 +220,16 @@ function killApp() {
     try {
       childApp.kill('SIGHUP');
     } catch (error) {
-      console.error(error)
+      
       childApp.kill('SIGKILL');
     }
-// restart anyway if childApp doesn't trigger exit event after 400ms
+    // restart anyway if childApp doesn't trigger exit event after 400ms
     setTimeout(() => {
       if (!exitTriggered) {
         // kill anyway
-        childApp.kill('SIGKILL');
+        if(childApp) {
+          childApp.kill('SIGKILL');
+        }
         handleExit()
       }
     }, 400)
