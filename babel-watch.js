@@ -117,7 +117,8 @@ let watcherInitialized = (program.watch.length === 0);
 
 process.on('SIGINT', function() {
   watcher.close();
-  killApp();
+  
+  ();
   process.exit(0);
 });
 
@@ -211,6 +212,7 @@ function killApp() {
         }
       } catch(error) {
       }
+    
       restartAppInternal();
     }
     childApp.on('exit', () => {
@@ -220,19 +222,19 @@ function killApp() {
     try {
       childApp.kill('SIGHUP');
     } catch (error) {
-      
       childApp.kill('SIGKILL');
     }
     // restart anyway if childApp doesn't trigger exit event after 400ms
     setTimeout(() => {
       if (!exitTriggered) {
         // kill anyway
-        if(childApp) {
+        try {
           childApp.kill('SIGKILL');
+        } catch (error) {
         }
         handleExit()
       }
-    }, 400)
+    }, 100)
     pipeFd = undefined;
     pipeFilename = undefined;
     childApp = undefined;
